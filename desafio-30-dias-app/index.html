@@ -3,91 +3,188 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#101827" />
+  <meta name="theme-color" content="#07111f" />
   <title>Desafio 30 Dias</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
+    <header class="hero">
       <div>
-        <p class="eyebrow">Desafio saudável</p>
+        <p class="eyebrow">Desafio pessoal</p>
         <h1>30 Dias Sem Desculpa</h1>
-        <p class="subtitle">Check-in diário, pontos, ranking e dias livres.</p>
+        <p class="subtitle">Rotina, comida, treino, água, evidências e evolução real.</p>
       </div>
       <button id="installBtn" class="ghost hidden">Instalar app</button>
     </header>
 
-    <main class="grid">
-      <section class="card form-card">
-        <div class="section-title">
-          <h2>Check-in do dia</h2>
-          <span id="todayLabel"></span>
-        </div>
+    <nav class="tabs" aria-label="Navegação do app">
+      <button class="tab active" data-tab="today">Hoje</button>
+      <button class="tab" data-tab="history">Histórico</button>
+      <button class="tab" data-tab="ranking">Ranking</button>
+      <button class="tab" data-tab="rules">Regras</button>
+    </nav>
 
-        <form id="checkinForm">
-          <label>Participante
-            <div class="row-input">
-              <select id="participantSelect" required></select>
-              <button type="button" id="addParticipantBtn" class="small">+</button>
+    <main>
+      <section id="tab-today" class="tab-panel active">
+        <div class="dashboard" id="dashboard"></div>
+
+        <section class="card form-card">
+          <div class="section-title">
+            <div>
+              <h2>Diário de hoje</h2>
+              <p class="meta">Preencha como foi o dia. Pode ser rápido ou detalhado.</p>
             </div>
-          </label>
-
-          <label>Data
-            <input type="date" id="dateInput" required />
-          </label>
-
-          <div class="checks">
-            <label><input type="checkbox" id="waterFull" /> Bati a meta de água</label>
-            <label><input type="checkbox" id="waterHalf" /> Tomei pelo menos metade da meta</label>
-            <label><input type="checkbox" id="noCommonSoda" checked /> Não tomei refrigerante comum</label>
-            <label><input type="checkbox" id="noSugaryDrink" checked /> Não tomei suco/bebida com açúcar</label>
-            <label><input type="checkbox" id="noSugarSweet" checked /> Não comi doce com açúcar</label>
-            <label><input type="checkbox" id="balancedMeals" /> Fiz 2 refeições equilibradas</label>
-            <label><input type="checkbox" id="fruitVeg" /> Comi fruta/legumes/verduras</label>
-            <label><input type="checkbox" id="training" /> Fiz treino/atividade física</label>
-            <label><input type="checkbox" id="sleep" /> Dormi bem</label>
-            <label><input type="checkbox" id="freeDay" /> Usei dia livre</label>
+            <span id="todayLabel"></span>
           </div>
 
-          <label>Observação
-            <textarea id="notes" placeholder="Ex: refrigerante zero ok, sobremesa zero açúcar, caminhada..."></textarea>
-          </label>
+          <form id="checkinForm">
+            <div class="two-cols">
+              <label>Participante
+                <div class="row-input">
+                  <select id="participantSelect" required></select>
+                  <button type="button" id="addParticipantBtn" class="small">+</button>
+                </div>
+              </label>
 
-          <div class="actions">
-            <button type="submit">Salvar check-in</button>
-            <button type="button" id="resetBtn" class="ghost">Limpar dados</button>
+              <label>Data
+                <input type="date" id="dateInput" required />
+              </label>
+            </div>
+
+            <div class="two-cols">
+              <label>Acordei às
+                <input type="time" id="wakeTime" />
+              </label>
+              <label>Dormi às
+                <input type="time" id="sleepTime" />
+              </label>
+            </div>
+
+            <div class="meal-grid">
+              <label>Café da manhã
+                <textarea id="breakfast" placeholder="Ex: ovos, pão, café sem açúcar..."></textarea>
+                <select id="breakfastQuality">
+                  <option value="">Classificar refeição</option>
+                  <option value="boa">Boa</option>
+                  <option value="normal">Normal</option>
+                  <option value="fora">Fora da regra</option>
+                </select>
+              </label>
+
+              <label>Almoço
+                <textarea id="lunch" placeholder="Ex: arroz, feijão, frango e salada..."></textarea>
+                <select id="lunchQuality">
+                  <option value="">Classificar refeição</option>
+                  <option value="boa">Boa</option>
+                  <option value="normal">Normal</option>
+                  <option value="fora">Fora da regra</option>
+                </select>
+              </label>
+
+              <label>Jantar
+                <textarea id="dinner" placeholder="Ex: omelete, carne, salada, marmita..."></textarea>
+                <select id="dinnerQuality">
+                  <option value="">Classificar refeição</option>
+                  <option value="boa">Boa</option>
+                  <option value="normal">Normal</option>
+                  <option value="fora">Fora da regra</option>
+                </select>
+              </label>
+
+              <label>Lanches / extras
+                <textarea id="snacks" placeholder="Ex: fruta, whey, doce zero, beliscos..."></textarea>
+                <select id="snacksQuality">
+                  <option value="">Classificar lanches</option>
+                  <option value="boa">Boa</option>
+                  <option value="normal">Normal</option>
+                  <option value="fora">Fora da regra</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="checks">
+              <label><input type="checkbox" id="waterFull" /> Bati a meta de água</label>
+              <label><input type="checkbox" id="waterHalf" /> Tomei pelo menos metade da meta</label>
+              <label><input type="checkbox" id="noCommonSoda" checked /> Não tomei refrigerante comum</label>
+              <label><input type="checkbox" id="noSugaryDrink" checked /> Não tomei suco/bebida com açúcar</label>
+              <label><input type="checkbox" id="noSugarSweet" checked /> Não comi doce com açúcar</label>
+              <label><input type="checkbox" id="balancedMeals" /> Fiz pelo menos 2 refeições boas/equilibradas</label>
+              <label><input type="checkbox" id="fruitVeg" /> Comi fruta, legumes ou verduras</label>
+              <label><input type="checkbox" id="training" /> Fiz treino/atividade física</label>
+              <label><input type="checkbox" id="sleep" /> Dormi bem</label>
+              <label><input type="checkbox" id="freeDay" /> Usei dia livre</label>
+            </div>
+
+            <div class="two-cols">
+              <label>Treino feito
+                <input id="trainingText" placeholder="Ex: caminhada 40 min, academia, treino em casa..." />
+              </label>
+              <label>Água aproximada
+                <input id="waterAmount" placeholder="Ex: 2L, 1,5L, 4 garrafas..." />
+              </label>
+            </div>
+
+            <label>Evidência do dia
+              <textarea id="evidenceText" placeholder="Ex: foto da marmita, print do treino, observação do peso, algo que prove/registre o dia..."></textarea>
+              <input type="file" id="evidenceFile" accept="image/*" />
+              <p class="hint">A foto fica salva apenas neste aparelho. Evite arquivos muito grandes.</p>
+              <div id="evidencePreview" class="evidence-preview"></div>
+            </label>
+
+            <label>Observações gerais
+              <textarea id="notes" placeholder="O que foi bom? O que atrapalhou? O que melhorar amanhã?"></textarea>
+            </label>
+
+            <div class="actions sticky-actions">
+              <button type="submit">Salvar diário</button>
+              <button type="button" id="quickBtn" class="ghost">Check-in rápido</button>
+              <button type="button" id="resetBtn" class="ghost danger">Limpar dados</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section id="tab-history" class="tab-panel">
+        <section class="card history-card">
+          <div class="section-title">
+            <div>
+              <h2>Histórico e diagnóstico</h2>
+              <p class="meta">Veja padrões, acertos, erros e evidências.</p>
+            </div>
+            <span id="totalCheckins"></span>
           </div>
-        </form>
+          <div id="insights" class="insights"></div>
+          <div id="history" class="history"></div>
+        </section>
       </section>
 
-      <section class="card score-card">
-        <div class="section-title">
-          <h2>Ranking</h2>
-          <button id="exportBtn" class="ghost small">Exportar CSV</button>
-        </div>
-        <div id="ranking" class="ranking"></div>
+      <section id="tab-ranking" class="tab-panel">
+        <section class="card score-card">
+          <div class="section-title">
+            <div>
+              <h2>Ranking</h2>
+              <p class="meta">Competição saudável entre vocês.</p>
+            </div>
+            <button id="exportBtn" class="ghost small">Exportar CSV</button>
+          </div>
+          <div id="ranking" class="ranking"></div>
+        </section>
       </section>
 
-      <section class="card rules-card">
-        <h2>Regras oficiais</h2>
-        <ul>
-          <li><strong>Refrigerante:</strong> só é permitido zero açúcar.</li>
-          <li><strong>Doces:</strong> permitido apenas proteína, fit, saudável ou zero açúcar.</li>
-          <li><strong>Sucos:</strong> não são permitidos, mesmo naturais, por entrarem como bebida com açúcar.</li>
-          <li><strong>Dias livres:</strong> 2 no mês por participante.</li>
-          <li><strong>Treino:</strong> meta mínima de 2 vezes por semana.</li>
-          <li><strong>Água:</strong> meta diária sugerida de 2 litros.</li>
-        </ul>
-      </section>
-
-      <section class="card history-card">
-        <div class="section-title">
-          <h2>Histórico</h2>
-          <span id="totalCheckins"></span>
-        </div>
-        <div id="history" class="history"></div>
+      <section id="tab-rules" class="tab-panel">
+        <section class="card rules-card">
+          <h2>Regras oficiais</h2>
+          <div class="rules-list">
+            <article><strong>Refrigerante</strong><p>Só é permitido refrigerante zero açúcar. Refrigerante comum gera penalidade fora do dia livre.</p></article>
+            <article><strong>Doces</strong><p>Permitido apenas proteína, fit, saudável, zero açúcar ou sem adição de açúcar. Não pode doce com açúcar.</p></article>
+            <article><strong>Sucos</strong><p>Não são permitidos como bebida livre, mesmo naturais, porque entram como bebida com açúcar.</p></article>
+            <article><strong>Comer bem</strong><p>Refeição boa é aquela com proteína e comida de verdade. Ex: arroz, feijão, carne/frango/ovo e salada. Normal é aceitável, mas não ideal. Fora da regra é excesso, açúcar, fast food ou ultraprocessado.</p></article>
+            <article><strong>Dias livres</strong><p>Cada participante tem 2 dias livres no mês. O dia livre não precisa virar exagero: água e treino continuam valendo ponto.</p></article>
+            <article><strong>Treino</strong><p>Meta mínima de 2 treinos por semana. Caminhada, academia, treino em casa ou bike contam.</p></article>
+          </div>
+        </section>
       </section>
     </main>
   </div>
