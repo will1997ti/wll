@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'desafio30dias.v2';
+const STORAGE_KEY = 'desafio30dias.v3';
+const oldKey = 'desafio30dias.v2';
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const scoreMap = {
@@ -13,17 +14,33 @@ const scoreMap = {
   sleep: 2,
 };
 
+const journalFields = [
+  'wakeTime','sleepTime','breakfast','breakfastQuality','lunch','lunchQuality','dinner','dinnerQuality','snacks','snacksQuality','trainingText','waterAmount','evidenceText','evidencePhoto','notes'
+];
+
 let state = loadState();
 let deferredPrompt = null;
+let pendingPhoto = '';
 
 function byId(id) { return document.getElementById(id); }
 
 function loadState() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { participants: [], checkins: [] };
+    const current = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (current) return normalizeState(current);
+    const old = JSON.parse(localStorage.getItem(oldKey));
+    if (old) return normalizeState(old);
+    return { participants: [], checkins: [] };
   } catch {
     return { participants: [], checkins: [] };
   }
+}
+
+function normalizeState(raw) {
+  return {
+    participants: Array.isArray(raw.participants) ? raw.participants : [],
+    checkins: Array.isArray(raw.checkins) ? raw.checkins : [],
+  };
 }
 
 function saveState() {
@@ -40,13 +57,28 @@ function calculateScore(data) {
     if (data[key]) total += points;
   });
 
+  const goodMeals = mealQualityCount(data, 'boa');
+  const normalMeals = mealQualityCount(data, 'normal');
+  const badMeals = mealQualityCount(data, 'fora');
+
+  total += goodMeals;
+  if (goodMeals >= 2) total += 2;
+  if (normalMeals >= 2) total += 1;
+
   if (!data.freeDay) {
     if (!data.noCommonSoda) total -= 3;
     if (!data.noSugaryDrink) total -= 3;
     if (!data.noSugarSweet) total -= 3;
+    total -= badMeals * 2;
   }
 
+  if (data.wakeTime) total += 1;
+  if (data.evidenceText || data.evidencePhoto) total += 1;
   return Math.max(total, 0);
+}
+
+function mealQualityCount(data, quality) {
+  return ['breakfastQuality','lunchQuality','dinnerQuality','snacksQuality'].filter(k => data[k] === quality).length;
 }
 
 function getFormData() {
@@ -54,16 +86,22 @@ function getFormData() {
   const data = {
     participantId: byId('participantSelect').value,
     date: byId('dateInput').value,
-    notes: byId('notes').value.trim(),
   };
   fields.forEach(id => data[id] = byId(id).checked);
+  journalFields.forEach(id => {
+    if (id === 'evidencePhoto') data[id] = pendingPhoto;
+    else data[id] = byId(id)?.value?.trim?.() || '';
+  });
   data.score = calculateScore(data);
+  data.diagnosis = buildDiagnosis(data);
   return data;
 }
 
-function resetForm() {
-  const participantId = byId('participantSelect').value || state.participants[0]?.id || '';
+function resetForm(keepParticipant = true) {
+  const participantId = keepParticipant ? (byId('participantSelect').value || state.participants[0]?.id || '') : '';
   byId('checkinForm').reset();
+  pendingPhoto = '';
+  byId('evidencePreview').innerHTML = '';
   byId('participantSelect').value = participantId;
   byId('dateInput').value = todayISO();
   byId('noCommonSoda').checked = true;
@@ -91,53 +129,128 @@ function renderParticipants() {
   });
 }
 
+function recordsForParticipant(id) {
+  return state.checkins.filter(c => c.participantId === id);
+}
+
 function getRanking() {
   return state.participants.map(p => {
-    const records = state.checkins.filter(c => c.participantId === p.id);
+    const records = recordsForParticipant(p.id);
+    const meals = records.flatMap(r => [r.breakfastQuality, r.lunchQuality, r.dinnerQuality, r.snacksQuality]).filter(Boolean);
+    const good = meals.filter(m => m === 'boa').length;
+    const bad = meals.filter(m => m === 'fora').length;
     return {
       ...p,
       total: records.reduce((sum, c) => sum + c.score, 0),
       checkins: records.length,
       trainings: records.filter(c => c.training).length,
       freeDays: records.filter(c => c.freeDay).length,
-      perfectDays: records.filter(c => c.score >= 19).length,
+      perfectDays: records.filter(c => c.score >= 22).length,
+      goodMealRate: meals.length ? Math.round((good / meals.length) * 100) : 0,
+      badMeals: bad,
     };
   }).sort((a, b) => b.total - a.total);
+}
+
+function renderDashboard() {
+  const pid = byId('participantSelect').value || state.participants[0]?.id;
+  const records = pid ? recordsForParticipant(pid) : [];
+  const today = records.find(r => r.date === byId('dateInput').value);
+  const weekRecords = records.filter(r => daysBetween(r.date, todayISO()) <= 6);
+  const trainingsWeek = weekRecords.filter(r => r.training).length;
+  const freeDays = records.filter(r => r.freeDay).length;
+  const last7 = records.filter(r => daysBetween(r.date, todayISO()) <= 6);
+  const meals = last7.flatMap(r => [r.breakfastQuality, r.lunchQuality, r.dinnerQuality, r.snacksQuality]).filter(Boolean);
+  const goodRate = meals.length ? Math.round(meals.filter(m => m === 'boa').length / meals.length * 100) : 0;
+
+  byId('dashboard').innerHTML = `
+    <article class="metric ${today ? 'good' : 'warn'}"><span>Hoje</span><strong>${today ? today.score + ' pts' : 'pendente'}</strong><span>${today ? 'diário salvo' : 'preencha hoje'}</span></article>
+    <article class="metric ${trainingsWeek >= 2 ? 'good' : 'warn'}"><span>Treinos semana</span><strong>${trainingsWeek}/2</strong><span>${trainingsWeek >= 2 ? 'meta batida' : 'faltam ' + Math.max(2-trainingsWeek,0)}</span></article>
+    <article class="metric ${freeDays <= 2 ? 'good' : 'bad'}"><span>Dias livres</span><strong>${freeDays}/2</strong><span>${freeDays <= 2 ? 'dentro da regra' : 'passou do combinado'}</span></article>
+    <article class="metric ${goodRate >= 60 ? 'good' : goodRate ? 'warn' : ''}"><span>Comida boa 7d</span><strong>${goodRate}%</strong><span>${meals.length ? meals.length + ' refeições avaliadas' : 'sem dados ainda'}</span></article>
+  `;
 }
 
 function renderRanking() {
   const box = byId('ranking');
   const ranked = getRanking();
-  box.innerHTML = ranked.length ? '' : '<p class="meta">Cadastre participantes e salve check-ins para gerar o ranking.</p>';
+  box.innerHTML = ranked.length ? '' : '<p class="meta">Cadastre participantes e salve diários para gerar o ranking.</p>';
 
   ranked.forEach((p, index) => {
     const div = document.createElement('div');
     div.className = 'rank-item';
     div.innerHTML = `
       <div class="rank-top">
-        <div><strong>#${index + 1} ${escapeHtml(p.name)}</strong><p class="meta">${p.checkins} check-ins · ${p.trainings} treinos · ${p.freeDays}/2 dias livres</p></div>
+        <div><strong>#${index + 1} ${escapeHtml(p.name)}</strong><p class="meta">${p.checkins} diários · ${p.trainings} treinos · ${p.freeDays}/2 dias livres</p></div>
         <div class="points">${p.total}</div>
       </div>
-      <p class="meta">Dias fortes: ${p.perfectDays}</p>
+      <div class="badge-row">
+        <span class="badge good">${p.goodMealRate}% comida boa</span>
+        <span class="badge ${p.badMeals ? 'bad' : 'good'}">${p.badMeals} refeições fora</span>
+        <span class="badge">${p.perfectDays} dias fortes</span>
+      </div>
     `;
     box.appendChild(div);
   });
 }
 
+function renderInsights() {
+  const box = byId('insights');
+  const pid = byId('participantSelect').value || state.participants[0]?.id;
+  const records = pid ? recordsForParticipant(pid) : [];
+  if (!records.length) {
+    box.innerHTML = '<div class="insight-item"><strong>Sem diagnóstico ainda</strong><p class="meta">Depois de salvar alguns dias, o app mostra padrões do que está funcionando e do que está atrapalhando.</p></div>';
+    return;
+  }
+  const last7 = records.filter(r => daysBetween(r.date, todayISO()) <= 6);
+  const base = last7.length ? last7 : records;
+  const goodMeals = base.reduce((sum, r) => sum + mealQualityCount(r, 'boa'), 0);
+  const badMeals = base.reduce((sum, r) => sum + mealQualityCount(r, 'fora'), 0);
+  const missedWater = base.filter(r => !r.waterFull && !r.waterHalf).length;
+  const sugarIssues = base.filter(r => !r.noSugarSweet || !r.noSugaryDrink || !r.noCommonSoda).length;
+  const trainings = base.filter(r => r.training).length;
+
+  const items = [
+    buildInsight('Alimentação', goodMeals >= badMeals ? `Você teve mais refeições boas (${goodMeals}) do que fora da regra (${badMeals}).` : `Atenção: refeições fora da regra (${badMeals}) estão pesando mais que as boas (${goodMeals}).`, goodMeals >= badMeals ? 'good' : 'bad'),
+    buildInsight('Água', missedWater === 0 ? 'Água está consistente nos registros recentes.' : `${missedWater} dia(s) sem bater nem metade da meta de água.`, missedWater === 0 ? 'good' : 'warn'),
+    buildInsight('Açúcar/bebidas', sugarIssues === 0 ? 'Sem deslizes registrados com açúcar, suco ou refrigerante comum.' : `${sugarIssues} dia(s) com deslize em açúcar/bebida fora da regra.`, sugarIssues === 0 ? 'good' : 'bad'),
+    buildInsight('Treino', trainings >= 2 ? `Meta semanal de treino batida: ${trainings} treino(s).` : `Ainda faltam ${Math.max(2-trainings,0)} treino(s) para bater a meta semanal.`, trainings >= 2 ? 'good' : 'warn'),
+  ];
+  box.innerHTML = items.join('');
+}
+
+function buildInsight(title, text, type) {
+  return `<div class="insight-item"><div class="badge ${type}">${title}</div><p>${escapeHtml(text)}</p></div>`;
+}
+
 function renderHistory() {
   const box = byId('history');
-  const sorted = [...state.checkins].sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`));
+  const sorted = [...state.checkins].sort((a, b) => `${b.date}${b.createdAt || ''}`.localeCompare(`${a.date}${a.createdAt || ''}`));
   byId('totalCheckins').textContent = `${sorted.length} registro(s)`;
-  box.innerHTML = sorted.length ? '' : '<p class="meta">Nenhum check-in salvo ainda.</p>';
+  box.innerHTML = sorted.length ? '' : '<p class="meta">Nenhum diário salvo ainda.</p>';
 
   sorted.forEach(c => {
     const participant = state.participants.find(p => p.id === c.participantId);
     const div = document.createElement('div');
     div.className = 'history-item';
     div.innerHTML = `
-      <div class="rank-top"><strong>${escapeHtml(participant?.name || 'Participante')}</strong><span class="points">${c.score}</span></div>
-      <p class="meta">${formatDate(c.date)}${c.freeDay ? ' · dia livre' : ''}</p>
+      <div class="history-head">
+        <div><strong>${escapeHtml(participant?.name || 'Participante')}</strong><p class="meta">${formatDate(c.date)}${c.freeDay ? ' · dia livre' : ''}${c.wakeTime ? ' · acordou ' + c.wakeTime : ''}</p></div>
+        <span class="points">${c.score}</span>
+      </div>
+      <div class="badge-row">${renderBadges(c)}</div>
+      <div class="meal-summary">
+        ${mealLine('Café', c.breakfast, c.breakfastQuality)}
+        ${mealLine('Almoço', c.lunch, c.lunchQuality)}
+        ${mealLine('Jantar', c.dinner, c.dinnerQuality)}
+        ${mealLine('Lanches', c.snacks, c.snacksQuality)}
+      </div>
+      ${c.trainingText ? `<p class="meta"><strong>Treino:</strong> ${escapeHtml(c.trainingText)}</p>` : ''}
+      ${c.waterAmount ? `<p class="meta"><strong>Água:</strong> ${escapeHtml(c.waterAmount)}</p>` : ''}
+      ${c.evidenceText ? `<p class="meta"><strong>Evidência:</strong> ${escapeHtml(c.evidenceText)}</p>` : ''}
+      ${c.evidencePhoto ? `<img class="history-photo" src="${c.evidencePhoto}" alt="Evidência do dia" />` : ''}
       ${c.notes ? `<p>${escapeHtml(c.notes)}</p>` : ''}
+      <p class="meta"><strong>Diagnóstico:</strong> ${escapeHtml(c.diagnosis || buildDiagnosis(c))}</p>
       <div class="history-actions">
         <button class="ghost small" data-edit="${c.id}">Editar</button>
         <button class="ghost small danger" data-delete="${c.id}">Excluir</button>
@@ -147,12 +260,49 @@ function renderHistory() {
   });
 }
 
+function renderBadges(c) {
+  const badges = [];
+  badges.push(`<span class="badge ${c.waterFull ? 'good' : c.waterHalf ? 'warn' : 'bad'}">Água</span>`);
+  badges.push(`<span class="badge ${c.training ? 'good' : ''}">Treino</span>`);
+  badges.push(`<span class="badge ${c.noSugarSweet && c.noSugaryDrink && c.noCommonSoda ? 'good' : 'bad'}">Açúcar/bebidas</span>`);
+  if (c.freeDay) badges.push('<span class="badge warn">Dia livre</span>');
+  return badges.join('');
+}
+
+function mealLine(title, text, quality) {
+  if (!text && !quality) return '';
+  const cls = quality === 'boa' ? 'good' : quality === 'fora' ? 'bad' : 'warn';
+  return `<p><strong>${title}:</strong> ${escapeHtml(text || 'não informado')} ${quality ? `<span class="badge ${cls}">${quality}</span>` : ''}</p>`;
+}
+
+function buildDiagnosis(data) {
+  const goodMeals = mealQualityCount(data, 'boa');
+  const badMeals = mealQualityCount(data, 'fora');
+  const problems = [];
+  const wins = [];
+  if (data.waterFull) wins.push('água em dia');
+  else if (!data.waterHalf) problems.push('faltou água');
+  if (data.training) wins.push('treino feito');
+  if (goodMeals >= 2 || data.balancedMeals) wins.push('boas refeições');
+  if (badMeals) problems.push(`${badMeals} refeição(ões) fora da regra`);
+  if (!data.noCommonSoda) problems.push('refrigerante comum');
+  if (!data.noSugaryDrink) problems.push('bebida/suco com açúcar');
+  if (!data.noSugarSweet) problems.push('doce com açúcar');
+  if (data.freeDay) wins.push('dia livre usado sem invalidar o registro');
+  if (!wins.length && !problems.length) return 'Dia registrado, mas com poucos detalhes para análise.';
+  if (!problems.length) return `Dia muito bom: ${wins.join(', ')}.`;
+  if (!wins.length) return `Dia de atenção: ${problems.join(', ')}.`;
+  return `Bom em ${wins.join(', ')}. Melhorar: ${problems.join(', ')}.`;
+}
+
 function renderAll() {
   const selected = byId('participantSelect').value;
   renderParticipants();
   if (selected) byId('participantSelect').value = selected;
   else if (state.participants[0]) byId('participantSelect').value = state.participants[0].id;
+  renderDashboard();
   renderRanking();
+  renderInsights();
   renderHistory();
   byId('todayLabel').textContent = formatDate(todayISO());
 }
@@ -188,7 +338,18 @@ function saveCheckin(e) {
 
   saveState();
   renderAll();
-  alert(`Check-in salvo: ${record.score} ponto(s).`);
+  alert(`Diário salvo: ${record.score} ponto(s).`);
+}
+
+function quickCheckin() {
+  byId('waterFull').checked = true;
+  byId('noCommonSoda').checked = true;
+  byId('noSugaryDrink').checked = true;
+  byId('noSugarSweet').checked = true;
+  byId('balancedMeals').checked = true;
+  byId('fruitVeg').checked = true;
+  ['breakfastQuality','lunchQuality','dinnerQuality'].forEach(id => byId(id).value = 'boa');
+  byId('notes').value = byId('notes').value || 'Check-in rápido: dia dentro do combinado.';
 }
 
 function editCheckin(id) {
@@ -197,39 +358,68 @@ function editCheckin(id) {
   byId('participantSelect').value = c.participantId;
   byId('dateInput').value = c.date;
   Object.keys(scoreMap).concat(['freeDay']).forEach(key => byId(key).checked = Boolean(c[key]));
-  byId('notes').value = c.notes || '';
+  journalFields.forEach(key => {
+    if (key === 'evidencePhoto') {
+      pendingPhoto = c.evidencePhoto || '';
+      byId('evidencePreview').innerHTML = pendingPhoto ? `<img src="${pendingPhoto}" alt="Prévia da evidência" />` : '';
+    } else if (byId(key)) byId(key).value = c[key] || '';
+  });
+  activateTab('today');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function deleteCheckin(id) {
-  if (!confirm('Excluir este check-in?')) return;
+  if (!confirm('Excluir este diário?')) return;
   state.checkins = state.checkins.filter(c => c.id !== id);
   saveState();
   renderAll();
 }
 
 function clearAll() {
-  if (!confirm('Isso apaga todos os participantes e check-ins deste navegador. Continuar?')) return;
+  if (!confirm('Isso apaga todos os participantes e diários deste navegador. Continuar?')) return;
   state = { participants: [], checkins: [] };
   saveState();
-  resetForm();
+  resetForm(false);
   renderAll();
 }
 
 function exportCsv() {
-  const headers = ['data','participante','pontos','agua_meta','agua_metade','sem_refri_comum','sem_bebida_acucar','sem_doce_acucar','refeicoes_equilibradas','fruta_legumes','treino','sono','dia_livre','observacao'];
+  const headers = ['data','participante','pontos','acordou','dormiu','cafe','cafe_qualidade','almoco','almoco_qualidade','jantar','jantar_qualidade','lanches','lanches_qualidade','agua_meta','agua_metade','agua_qtd','sem_refri_comum','sem_bebida_acucar','sem_doce_acucar','treino','treino_texto','sono','dia_livre','evidencia','diagnostico','observacao'];
   const rows = state.checkins.map(c => {
     const p = state.participants.find(x => x.id === c.participantId);
-    return [c.date, p?.name || '', c.score, c.waterFull, c.waterHalf, c.noCommonSoda, c.noSugaryDrink, c.noSugarSweet, c.balancedMeals, c.fruitVeg, c.training, c.sleep, c.freeDay, c.notes || ''];
+    return [c.date, p?.name || '', c.score, c.wakeTime, c.sleepTime, c.breakfast, c.breakfastQuality, c.lunch, c.lunchQuality, c.dinner, c.dinnerQuality, c.snacks, c.snacksQuality, c.waterFull, c.waterHalf, c.waterAmount, c.noCommonSoda, c.noSugaryDrink, c.noSugarSweet, c.training, c.trainingText, c.sleep, c.freeDay, c.evidenceText, c.diagnosis || buildDiagnosis(c), c.notes || ''];
   });
-  const csv = [headers, ...rows].map(row => row.map(value => `"${String(value).replaceAll('"','""')}"`).join(',')).join('\n');
+  const csv = [headers, ...rows].map(row => row.map(value => `"${String(value ?? '').replaceAll('"','""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'desafio-30-dias.csv';
+  a.download = 'desafio-30-dias-diario.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function handlePhoto(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return alert('Selecione uma imagem.');
+  if (file.size > 1800000) alert('Foto grande pode ocupar muito espaço. Se travar, use uma imagem menor.');
+  const reader = new FileReader();
+  reader.onload = () => {
+    pendingPhoto = reader.result;
+    byId('evidencePreview').innerHTML = `<img src="${pendingPhoto}" alt="Prévia da evidência" />`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function activateTab(tab) {
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+}
+
+function daysBetween(a, b) {
+  const d1 = new Date(a + 'T00:00:00');
+  const d2 = new Date(b + 'T00:00:00');
+  return Math.abs(Math.round((d2 - d1) / 86400000));
 }
 
 function formatDate(iso) {
@@ -238,15 +428,21 @@ function formatDate(iso) {
 }
 
 function escapeHtml(str) {
-  return String(str).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[char]));
+  return String(str ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[char]));
 }
 
 byId('dateInput').value = todayISO();
 byId('addParticipantBtn').addEventListener('click', addParticipant);
 byId('participantForm').addEventListener('submit', saveParticipant);
 byId('checkinForm').addEventListener('submit', saveCheckin);
+byId('quickBtn').addEventListener('click', quickCheckin);
 byId('resetBtn').addEventListener('click', clearAll);
 byId('exportBtn').addEventListener('click', exportCsv);
+byId('participantSelect').addEventListener('change', renderAll);
+byId('dateInput').addEventListener('change', renderDashboard);
+byId('evidenceFile').addEventListener('change', e => handlePhoto(e.target.files[0]));
+
+document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
 
 byId('history').addEventListener('click', e => {
   const editId = e.target.dataset.edit;
