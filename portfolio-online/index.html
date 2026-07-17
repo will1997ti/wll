@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a13" />
+  <title>Portfólio Online | Consultor de E-commerce</title>
+  <meta name="description" content="Portfólio online interativo para consultor de e-commerce, mídia paga, aulas e desenvolvimento de sistemas." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <canvas id="growthCanvas" aria-hidden="true"></canvas>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="logo" href="#topo">Growth<span>Commerce</span></a>
+    <nav aria-label="Seções do portfólio">
+      <a href="#resultados">Resultados</a>
+      <a href="#cases">Cases</a>
+      <a href="#metodo">Método</a>
+      <a href="#contato">Contato</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar entre tema claro e escuro">Tema</button>
+  </header>
+
+  <main id="topo">
+    <section class="hero section-shell">
+      <div class="hero-content">
+        <p class="kicker">Consultor de e-commerce • Gestor de ads • Professor • Desenvolvedor</p>
+        <h1>Eu ajudo lojas virtuais a venderem mais, lucrarem melhor e operarem com dados.</h1>
+        <p class="hero-text">Uma one page para mostrar sua autoridade: operações que saíram do zero, contas que passaram de R$ 100 mil/mês, projetos milionários, viradas de prejuízo para lucro, aulas e sistemas criados para acelerar decisões.</p>
+        <div class="cta-row">
+          <a class="button primary" href="#cases">Ver portfólio</a>
+          <a class="button secondary" href="#contato">Quero um diagnóstico</a>
+        </div>
+      </div>
+
+      <aside class="hero-panel" aria-label="Resumo visual de performance">
+        <div class="panel-topline">
+          <span></span><span></span><span></span>
+          <strong>ecommerce-growth-os</strong>
+        </div>
+        <div class="orbit-card">
+          <div class="orbit"></div>
+          <strong>ROAS + Margem + Operação</strong>
+          <p>crescimento sustentável</p>
+        </div>
+        <div class="signal-list">
+          <p><b>01</b> Diagnóstico completo da loja e mídia.</p>
+          <p><b>02</b> Plano de escala com controle de margem.</p>
+          <p><b>03</b> Aulas, dashboards e automações para o time.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section id="resultados" class="results section-shell reveal">
+      <article><span data-counter="1000000">0</span><p>R$ em contas escaladas</p></article>
+      <article><span data-counter="100000">0</span><p>R$+ por mês em operações</p></article>
+      <article><span data-counter="0">0</span><p>lojas saindo do zero</p></article>
+      <article><span data-counter="360">0</span><p>visão 360°: ads, loja, dados e sistemas</p></article>
+    </section>
+
+    <section id="cases" class="section-shell portfolio-section">
+      <div class="section-heading reveal">
+        <p class="kicker">Portfólio de impacto</p>
+        <h2>Cases organizados por tipo de transformação.</h2>
+        <p>Use os cards abaixo para navegar. Depois, substitua por números reais, prints, depoimentos e logos dos seus clientes quando puder divulgar.</p>
+      </div>
+
+      <div class="case-board reveal">
+        <div class="case-tabs" role="tablist" aria-label="Tipos de case">
+          <button class="active" type="button" data-case="milhao">Conta milionária</button>
+          <button type="button" data-case="zero">Do zero</button>
+          <button type="button" data-case="cemmil">100k+/mês</button>
+          <button type="button" data-case="lucro">Prejuízo para lucro</button>
+        </div>
+        <div class="case-output" id="caseOutput" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="metodo" class="section-shell method-section">
+      <div class="section-heading reveal">
+        <p class="kicker">Meu método</p>
+        <h2>Da bagunça operacional para uma rotina de crescimento.</h2>
+      </div>
+      <div class="method-grid">
+        <article class="method-card reveal"><span>01</span><h3>Raio-X comercial</h3><p>Analiso funil, produto, criativos, tracking, margem, ticket, recorrência e gargalos da operação.</p></article>
+        <article class="method-card reveal"><span>02</span><h3>Plano de escala</h3><p>Priorizo as alavancas que mais afetam lucro: oferta, campanha, página, checkout, CRM e recompra.</p></article>
+        <article class="method-card reveal"><span>03</span><h3>Execução e gestão</h3><p>Faço ou guio mídia paga, testes, otimizações semanais, dashboards e tomada de decisão com dados.</p></article>
+        <article class="method-card reveal"><span>04</span><h3>Educação e sistemas</h3><p>Dou aulas, documento processos e crio ferramentas para o time continuar evoluindo com autonomia.</p></article>
+      </div>
+    </section>
+
+    <section class="section-shell stack-section reveal">
+      <div>
+        <p class="kicker">Diferencial técnico</p>
+        <h2>Além de consultor, eu também desenvolvo.</h2>
+      </div>
+      <div class="stack-cloud" aria-label="Competências e ferramentas">
+        <span>Meta Ads</span><span>Google Ads</span><span>GA4</span><span>GTM</span><span>Dashboards</span><span>Landing Pages</span><span>CRM</span><span>Automações</span><span>APIs</span><span>JavaScript</span><span>Sistemas internos</span><span>Treinamentos</span>
+      </div>
+    </section>
+
+    <section id="contato" class="section-shell contact-section reveal">
+      <div class="contact-copy">
+        <p class="kicker">Vamos conversar?</p>
+        <h2>Este portfólio já está pronto para publicar e personalizar.</h2>
+        <p>Para ver agora: abra esta pasta em um servidor local e acesse o endereço exibido. Depois, você pode trocar textos, adicionar prints reais, conectar o formulário ao WhatsApp e publicar em Vercel, Netlify ou GitHub Pages.</p>
+      </div>
+      <form class="contact-form" id="contactForm">
+        <label>Seu nome<input name="name" placeholder="Ex: João" required /></label>
+        <label>Contato<input name="contact" placeholder="WhatsApp ou e-mail" required /></label>
+        <label>Mensagem<textarea name="message" placeholder="Quero ajuda para escalar meu e-commerce..."></textarea></label>
+        <button class="button primary" type="submit">Preparar mensagem</button>
+        <output id="formResult"></output>
+      </form>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
